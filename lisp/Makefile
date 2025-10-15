@@ -1,4 +1,4 @@
-.PHONY: test test-process test-project test-utils test-create test-show test-update test-main test-misc clean
+.PHONY: test test-process test-project test-utils test-list test-create test-show test-update test-main test-misc clean
 
 EMACS ?= emacs
 BATCH = $(EMACS) --batch -Q -L .
@@ -16,6 +16,7 @@ test:
 		-l test/beads-process-test.el \
 		-l test/beads-project-test.el \
 		-l test/beads-utils-test.el \
+		-l test/beads-list-test.el \
 		-l test/beads-transient-create-test.el \
 		-l test/beads-transient-update-test.el \
 		-l test/beads-show-test.el \
@@ -35,6 +36,10 @@ test-project:
 test-utils:
 	@echo "Running utils tests..."
 	$(BATCH) -l beads.el -l test/beads-utils-test.el -f ert-run-tests-batch-and-exit
+
+test-list:
+	@echo "Running list mode tests..."
+	$(BATCH) -l beads.el -l beads-list.el -l test/beads-list-test.el -f ert-run-tests-batch-and-exit
 
 test-create:
 	@echo "Running create transient tests..."
@@ -68,6 +73,7 @@ test-interactive:
 		-l test/beads-process-test.el \
 		-l test/beads-project-test.el \
 		-l test/beads-utils-test.el \
+		-l test/beads-list-test.el \
 		-l test/beads-transient-create-test.el \
 		-l test/beads-transient-update-test.el \
 		-l test/beads-show-test.el \
@@ -90,6 +96,7 @@ test-stats:
 	@echo "Process tests: $$(grep -c 'ert-deftest' test/beads-process-test.el)"
 	@echo "Project tests: $$(grep -c 'ert-deftest' test/beads-project-test.el)"
 	@echo "Utils tests: $$(grep -c 'ert-deftest' test/beads-utils-test.el)"
+	@echo "List tests: $$(grep -c 'ert-deftest' test/beads-list-test.el)"
 	@echo "Create tests: $$(grep -c 'ert-deftest' test/beads-transient-create-test.el)"
 	@echo "Update tests: $$(grep -c 'ert-deftest' test/beads-transient-update-test.el)"
 	@echo "Show tests: $$(grep -c 'ert-deftest' test/beads-show-test.el)"
