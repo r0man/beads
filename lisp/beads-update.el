@@ -436,30 +436,53 @@ Returns list of arguments for bd update command."
               (setq beads-update--description desc)
               desc)))
 
+(defun beads-update--edit-text-multiline (current-value fallback-value callback field-name)
+  "Edit text in a multiline buffer.
+CURRENT-VALUE is the modified text, FALLBACK-VALUE is the original,
+CALLBACK is called with the result, FIELD-NAME is shown in messages."
+  (let* ((buffer-name (format "*beads-%s*" (downcase field-name)))
+         (buffer (generate-new-buffer buffer-name))
+         (parent-buffer (current-buffer)))
+    (switch-to-buffer buffer)
+    (insert (or current-value fallback-value ""))
+    ;; Use markdown-mode if available, otherwise text-mode
+    (if (fboundp 'markdown-mode)
+        (markdown-mode)
+      (text-mode))
+    ;; Enable visual-line-mode for better editing
+    (visual-line-mode 1)
+    (setq header-line-format
+          (format "Edit %s: C-c C-c to finish, C-c C-k to cancel"
+                  field-name))
+    ;; Set up keybindings
+    (let ((finish-func (lambda ()
+                        (interactive)
+                        (let ((text (buffer-substring-no-properties
+                                   (point-min) (point-max))))
+                          (kill-buffer)
+                          (switch-to-buffer parent-buffer)
+                          (funcall callback text)
+                          (message "%s saved" field-name))))
+          (cancel-func (lambda ()
+                        (interactive)
+                        (kill-buffer)
+                        (switch-to-buffer parent-buffer)
+                        (message "%s edit cancelled" field-name))))
+      (local-set-key (kbd "C-c C-c") finish-func)
+      (local-set-key (kbd "C-c C-k") cancel-func))
+    (message "Edit %s. C-c C-c to finish, C-c C-k to cancel." field-name)))
+
 (transient-define-suffix beads-update--infix-description-multiline ()
   "Set the description using a multiline editor."
   :description "Description (multiline)"
   :key "D"
   :transient t
   (interactive)
-  (let ((buffer (generate-new-buffer "*beads-description*")))
-    (switch-to-buffer buffer)
-    (insert (or beads-update--description
-                (beads-update--get-original 'description)
-                ""))
-    (text-mode)
-    (message "Edit description. C-c C-c to finish, C-c C-k to cancel.")
-    (local-set-key (kbd "C-c C-c")
-                   (lambda ()
-                     (interactive)
-                     (setq beads-update--description (buffer-string))
-                     (kill-buffer)
-                     (message "Description saved")))
-    (local-set-key (kbd "C-c C-k")
-                   (lambda ()
-                     (interactive)
-                     (kill-buffer)
-                     (message "Description edit cancelled")))))
+  (beads-update--edit-text-multiline
+   beads-update--description
+   (beads-update--get-original 'description)
+   (lambda (text) (setq beads-update--description text))
+   "Description"))
 
 (transient-define-suffix beads-update--infix-acceptance-multiline ()
   "Set the acceptance criteria using a multiline editor."
@@ -467,50 +490,23 @@ Returns list of arguments for bd update command."
   :key "A"
   :transient t
   (interactive)
-  (let ((buffer (generate-new-buffer "*beads-acceptance*")))
-    (switch-to-buffer buffer)
-    (insert (or beads-update--acceptance-criteria
-                (beads-update--get-original 'acceptance-criteria)
-                ""))
-    (text-mode)
-    (message "Edit acceptance criteria. C-c C-c to finish, C-c C-k to cancel.")
-    (local-set-key (kbd "C-c C-c")
-                   (lambda ()
-                     (interactive)
-                     (setq beads-update--acceptance-criteria
-                          (buffer-string))
-                     (kill-buffer)
-                     (message "Acceptance criteria saved")))
-    (local-set-key (kbd "C-c C-k")
-                   (lambda ()
-                     (interactive)
-                     (kill-buffer)
-                     (message "Acceptance criteria edit cancelled")))))
+  (beads-update--edit-text-multiline
+   beads-update--acceptance-criteria
+   (beads-update--get-original 'acceptance-criteria)
+   (lambda (text) (setq beads-update--acceptance-criteria text))
+   "Acceptance Criteria"))
 
 (transient-define-suffix beads-update--infix-design-multiline ()
   "Set the design notes using a multiline editor."
   :description "Design (multiline)"
-  :key "G"
+  :key "E"  ; Changed from G to avoid conflict with Magit refresh
   :transient t
   (interactive)
-  (let ((buffer (generate-new-buffer "*beads-design*")))
-    (switch-to-buffer buffer)
-    (insert (or beads-update--design
-                (beads-update--get-original 'design)
-                ""))
-    (text-mode)
-    (message "Edit design notes. C-c C-c to finish, C-c C-k to cancel.")
-    (local-set-key (kbd "C-c C-c")
-                   (lambda ()
-                     (interactive)
-                     (setq beads-update--design (buffer-string))
-                     (kill-buffer)
-                     (message "Design notes saved")))
-    (local-set-key (kbd "C-c C-k")
-                   (lambda ()
-                     (interactive)
-                     (kill-buffer)
-                     (message "Design notes edit cancelled")))))
+  (beads-update--edit-text-multiline
+   beads-update--design
+   (beads-update--get-original 'design)
+   (lambda (text) (setq beads-update--design text))
+   "Design"))
 
 (transient-define-suffix beads-update--infix-notes-multiline ()
   "Set the notes using a multiline editor."
@@ -518,24 +514,11 @@ Returns list of arguments for bd update command."
   :key "N"
   :transient t
   (interactive)
-  (let ((buffer (generate-new-buffer "*beads-notes*")))
-    (switch-to-buffer buffer)
-    (insert (or beads-update--notes
-                (beads-update--get-original 'notes)
-                ""))
-    (text-mode)
-    (message "Edit notes. C-c C-c to finish, C-c C-k to cancel.")
-    (local-set-key (kbd "C-c C-c")
-                   (lambda ()
-                     (interactive)
-                     (setq beads-update--notes (buffer-string))
-                     (kill-buffer)
-                     (message "Notes saved")))
-    (local-set-key (kbd "C-c C-k")
-                   (lambda ()
-                     (interactive)
-                     (kill-buffer)
-                     (message "Notes edit cancelled")))))
+  (beads-update--edit-text-multiline
+   beads-update--notes
+   (beads-update--get-original 'notes)
+   (lambda (text) (setq beads-update--notes text))
+   "Notes"))
 
 ;;; Suffix Commands
 
@@ -636,18 +619,8 @@ context or prompt the user."
    (list (or (beads-update--detect-issue-id)
             (completing-read
              "Update issue: "
-             (lambda (string pred action)
-               (if (eq action 'metadata)
-                   '(metadata (category . beads-issue))
-                 (complete-with-action
-                  action
-                  (mapcar (lambda (i) (alist-get 'id i))
-                         (condition-case nil
-                             (beads--parse-issues
-                              (beads--run-command "list"))
-                           (error nil)))
-                  string pred)))
-             nil t))))
+             (beads--issue-completion-table)
+             nil t nil 'beads--issue-id-history))))
   ;; Load issue data before showing menu
   (beads-check-executable)
   (unless issue-id
@@ -669,7 +642,7 @@ context or prompt the user."
     ("D" "Description (multiline)" beads-update--infix-description-multiline)
     ("A" "Acceptance Criteria (multiline)"
      beads-update--infix-acceptance-multiline)
-    ("G" "Design (multiline)" beads-update--infix-design-multiline)
+    ("E" "Design (multiline)" beads-update--infix-design-multiline)
     ("N" "Notes (multiline)" beads-update--infix-notes-multiline)]]
   ["Actions"
    ("u" "Update issue" beads-update--execute)
