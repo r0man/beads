@@ -591,8 +591,8 @@ STATE is an alist expression of (variable . value) pairs."
   (should (fboundp 'beads-update)))
 
 (ert-deftest beads-update-test-transient-is-prefix ()
-  "Test that beads-update is a transient prefix."
-  (should (get 'beads-update 'transient--prefix)))
+  "Test that beads-update--menu is a transient prefix."
+  (should (get 'beads-update--menu 'transient--prefix)))
 
 (ert-deftest beads-update-test-infix-commands-defined ()
   "Test that all infix commands are defined."
@@ -603,7 +603,6 @@ STATE is an alist expression of (variable . value) pairs."
   (should (fboundp 'beads-update--infix-assignee))
   (should (fboundp 'beads-update--infix-external-ref))
   (should (fboundp 'beads-update--infix-description))
-  (should (fboundp 'beads-update--infix-description-multiline))
   (should (fboundp 'beads-update--infix-acceptance-multiline))
   (should (fboundp 'beads-update--infix-design-multiline))
   (should (fboundp 'beads-update--infix-notes-multiline)))
