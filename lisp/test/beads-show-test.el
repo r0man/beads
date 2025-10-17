@@ -1149,6 +1149,289 @@
         (should (> (region-end) (region-beginning))))
       (kill-buffer))))
 
+;;; Tests for Block Navigation
+
+(defvar beads-show-test--block-rich-issue
+  '((id . "bd-300")
+    (title . "Block Navigation Test")
+    (description . "Regular paragraph text here.\n\n```python\ndef hello():\n    print(\"Hello\")\n```\n\nAnother paragraph.\n\n- List item 1\n- List item 2\n  Continuation\n- List item 3\n\nMore text.\n\n> Blockquote line 1\n> Blockquote line 2\n\nFinal paragraph.\n\n    Indented code line 1\n    Indented code line 2\n\nEnd text.")
+    (status . "open")
+    (priority . 2)
+    (issue_type . "task")
+    (created_at . "2025-01-15T10:00:00Z")
+    (updated_at . "2025-01-15T10:00:00Z"))
+  "Sample issue with various block types for testing block navigation.")
+
+(ert-deftest beads-show-test-block-navigation-keybindings ()
+  "Test that C-M-{ and C-M-} are bound to block navigation."
+  (beads-show-test-with-temp-buffer
+   (should (eq (lookup-key beads-show-mode-map (kbd "C-M-{"))
+              #'beads-show-backward-block))
+   (should (eq (lookup-key beads-show-mode-map (kbd "C-M-}"))
+              #'beads-show-forward-block))))
+
+(ert-deftest beads-show-test-block-boundary-detection-fenced ()
+  "Test detection of fenced code block boundaries."
+  (with-temp-buffer
+    (insert "```python\n")
+    (goto-char (point-min))
+    (should (eq (beads-show--at-block-boundary) 'fenced-code))))
+
+(ert-deftest beads-show-test-block-boundary-detection-list ()
+  "Test detection of list block boundaries."
+  (with-temp-buffer
+    (insert "- List item\n")
+    (goto-char (point-min))
+    (should (eq (beads-show--at-block-boundary) 'list))))
+
+(ert-deftest beads-show-test-block-boundary-detection-blockquote ()
+  "Test detection of blockquote boundaries."
+  (with-temp-buffer
+    (insert "> Quote text\n")
+    (goto-char (point-min))
+    (should (eq (beads-show--at-block-boundary) 'blockquote))))
+
+(ert-deftest beads-show-test-block-boundary-detection-indented ()
+  "Test detection of indented code blocks."
+  (with-temp-buffer
+    (insert "    code line\n")
+    (goto-char (point-min))
+    (should (eq (beads-show--at-block-boundary) 'indented-code))))
+
+(ert-deftest beads-show-test-block-boundary-detection-numbered-list ()
+  "Test detection of numbered list boundaries."
+  (with-temp-buffer
+    (insert "1. First item\n")
+    (goto-char (point-min))
+    (should (eq (beads-show--at-block-boundary) 'list)))
+  (with-temp-buffer
+    (insert "42. Middle item\n")
+    (goto-char (point-min))
+    (should (eq (beads-show--at-block-boundary) 'list))))
+
+(ert-deftest beads-show-test-forward-block-from-text ()
+  "Test forward-block navigation from regular text."
+  (cl-letf (((symbol-function 'beads--run-command)
+             (beads-show-test--mock-show-command
+              beads-show-test--block-rich-issue)))
+    (beads-show "bd-300")
+    (with-current-buffer "*beads-show: bd-300*"
+      (goto-char (point-min))
+      ;; Find "Regular paragraph"
+      (when (search-forward "Regular paragraph" nil t)
+        (beginning-of-line)
+        (let ((start-pos (point)))
+          (beads-show-forward-block)
+          ;; Should have moved to next block
+          (should (> (point) start-pos))))
+      (kill-buffer))))
+
+(ert-deftest beads-show-test-forward-block-skip-fenced-code ()
+  "Test forward-block skips entire fenced code block."
+  (cl-letf (((symbol-function 'beads--run-command)
+             (beads-show-test--mock-show-command
+              beads-show-test--block-rich-issue)))
+    (beads-show "bd-300")
+    (with-current-buffer "*beads-show: bd-300*"
+      (goto-char (point-min))
+      ;; Find opening fence
+      (when (search-forward "```python" nil t)
+        (beginning-of-line)
+        (let ((start-pos (point)))
+          (beads-show-forward-block)
+          ;; Should be past closing fence
+          (should (> (point) start-pos))
+          ;; Should be past the code content
+          (let ((text-before-point
+                 (buffer-substring-no-properties start-pos (point))))
+            (should (string-match-p "```" text-before-point)))))
+      (kill-buffer))))
+
+(ert-deftest beads-show-test-forward-block-skip-list ()
+  "Test forward-block skips entire list."
+  (cl-letf (((symbol-function 'beads--run-command)
+             (beads-show-test--mock-show-command
+              beads-show-test--block-rich-issue)))
+    (beads-show "bd-300")
+    (with-current-buffer "*beads-show: bd-300*"
+      (goto-char (point-min))
+      ;; Find list start
+      (when (search-forward "- List item 1" nil t)
+        (beginning-of-line)
+        (let ((start-pos (point)))
+          (beads-show-forward-block)
+          ;; Should be past all list items
+          (should (> (point) start-pos))))
+      (kill-buffer))))
+
+(ert-deftest beads-show-test-forward-block-skip-blockquote ()
+  "Test forward-block skips entire blockquote."
+  (cl-letf (((symbol-function 'beads--run-command)
+             (beads-show-test--mock-show-command
+              beads-show-test--block-rich-issue)))
+    (beads-show "bd-300")
+    (with-current-buffer "*beads-show: bd-300*"
+      (goto-char (point-min))
+      ;; Find blockquote start
+      (when (search-forward "> Blockquote line 1" nil t)
+        (beginning-of-line)
+        (let ((start-pos (point)))
+          (beads-show-forward-block)
+          ;; Should be past blockquote
+          (should (> (point) start-pos))))
+      (kill-buffer))))
+
+(ert-deftest beads-show-test-forward-block-skip-indented-code ()
+  "Test forward-block skips indented code block."
+  (cl-letf (((symbol-function 'beads--run-command)
+             (beads-show-test--mock-show-command
+              beads-show-test--block-rich-issue)))
+    (beads-show "bd-300")
+    (with-current-buffer "*beads-show: bd-300*"
+      (goto-char (point-min))
+      ;; Find indented code
+      (when (search-forward "    Indented code line 1" nil t)
+        (beginning-of-line)
+        (let ((start-pos (point)))
+          (beads-show-forward-block)
+          ;; Should be past indented code
+          (should (> (point) start-pos))))
+      (kill-buffer))))
+
+(ert-deftest beads-show-test-backward-block-from-text ()
+  "Test backward-block navigation from regular text."
+  (cl-letf (((symbol-function 'beads--run-command)
+             (beads-show-test--mock-show-command
+              beads-show-test--block-rich-issue)))
+    (beads-show "bd-300")
+    (with-current-buffer "*beads-show: bd-300*"
+      (goto-char (point-min))
+      ;; Find "End text" near the end
+      (when (search-forward "End text" nil t)
+        (beginning-of-line)
+        (let ((start-pos (point)))
+          (beads-show-backward-block)
+          ;; Should have moved backward to previous block
+          (should (< (point) start-pos))))
+      (kill-buffer))))
+
+(ert-deftest beads-show-test-backward-block-to-list-start ()
+  "Test backward-block moves backward from end of list."
+  (cl-letf (((symbol-function 'beads--run-command)
+             (beads-show-test--mock-show-command
+              beads-show-test--block-rich-issue)))
+    (beads-show "bd-300")
+    (with-current-buffer "*beads-show: bd-300*"
+      (goto-char (point-min))
+      ;; Find "List item 3" (end of list)
+      (when (search-forward "- List item 3" nil t)
+        (end-of-line)
+        (forward-line 1)
+        (let ((start-pos (point)))
+          (beads-show-backward-block)
+          ;; Should have moved backward
+          (should (< (point) start-pos))))
+      (kill-buffer))))
+
+(ert-deftest beads-show-test-backward-block-to-fenced-code-start ()
+  "Test backward-block finds start of fenced code block."
+  (cl-letf (((symbol-function 'beads--run-command)
+             (beads-show-test--mock-show-command
+              beads-show-test--block-rich-issue)))
+    (beads-show "bd-300")
+    (with-current-buffer "*beads-show: bd-300*"
+      (goto-char (point-min))
+      ;; Find inside or after code block
+      (when (search-forward "```python" nil t)
+        (forward-line 2)  ; Move into the code block
+        (let ((start-pos (point)))
+          (beads-show-backward-block)
+          ;; Should be at opening fence
+          (should (< (point) start-pos))
+          (beginning-of-line)
+          (should (looking-at "```"))))
+      (kill-buffer))))
+
+(ert-deftest beads-show-test-forward-block-at-end ()
+  "Test forward-block at end of buffer shows message."
+  (cl-letf (((symbol-function 'beads--run-command)
+             (beads-show-test--mock-show-command
+              beads-show-test--minimal-issue)))
+    (beads-show "bd-1")
+    (with-current-buffer "*beads-show: bd-1*"
+      (goto-char (point-max))
+      (let ((pos (point)))
+        (beads-show-forward-block)
+        ;; Should not move much from end
+        (should (<= (abs (- (point) pos)) 10)))
+      (kill-buffer))))
+
+(ert-deftest beads-show-test-backward-block-at-start ()
+  "Test backward-block at start of buffer shows message."
+  (cl-letf (((symbol-function 'beads--run-command)
+             (beads-show-test--mock-show-command
+              beads-show-test--minimal-issue)))
+    (beads-show "bd-1")
+    (with-current-buffer "*beads-show: bd-1*"
+      (goto-char (point-min))
+      (forward-line 2)
+      (let ((pos (point)))
+        (beads-show-backward-block)
+        ;; Should have moved or stayed
+        (should (<= (point) pos)))
+      (kill-buffer))))
+
+(ert-deftest beads-show-test-block-navigation-sequence ()
+  "Test sequence of forward and backward block navigation."
+  (cl-letf (((symbol-function 'beads--run-command)
+             (beads-show-test--mock-show-command
+              beads-show-test--block-rich-issue)))
+    (beads-show "bd-300")
+    (with-current-buffer "*beads-show: bd-300*"
+      (goto-char (point-min))
+      (let ((positions '()))
+        ;; Navigate forward multiple times, recording positions
+        (push (point) positions)
+        (beads-show-forward-block)
+        (push (point) positions)
+        (beads-show-forward-block)
+        (push (point) positions)
+        (beads-show-forward-block)
+        (push (point) positions)
+
+        ;; All positions should be different and increasing
+        (setq positions (nreverse positions))
+        (should (apply #'< positions))
+
+        ;; Navigate backward
+        (beads-show-backward-block)
+        (should (< (point) (nth 3 positions))))
+      (kill-buffer))))
+
+(ert-deftest beads-show-test-block-navigation-functions-defined ()
+  "Test that block navigation functions are defined."
+  (should (fboundp 'beads-show-forward-block))
+  (should (fboundp 'beads-show-backward-block))
+  (should (fboundp 'beads-show--at-block-boundary)))
+
+(ert-deftest beads-show-test-triple-tilde-fence ()
+  "Test that ~~~ fences are recognized."
+  (with-temp-buffer
+    (insert "~~~\n")
+    (goto-char (point-min))
+    (should (eq (beads-show--at-block-boundary) 'fenced-code))))
+
+(ert-deftest beads-show-test-list-markers ()
+  "Test various list marker formats."
+  (with-temp-buffer
+    (insert "* Item\n")
+    (goto-char (point-min))
+    (should (eq (beads-show--at-block-boundary) 'list)))
+  (with-temp-buffer
+    (insert "+ Item\n")
+    (goto-char (point-min))
+    (should (eq (beads-show--at-block-boundary) 'list))))
+
 ;;; Tests for Section Boundary Navigation
 
 (ert-deftest beads-show-test-section-boundary-keybindings ()
