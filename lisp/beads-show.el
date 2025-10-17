@@ -141,6 +141,10 @@
     (define-key map (kbd "n") #'beads-show-next-section)
     (define-key map (kbd "p") #'beads-show-previous-section)
 
+    ;; Paragraph navigation (markdown-mode style)
+    (define-key map (kbd "M-{") #'beads-show-backward-paragraph)
+    (define-key map (kbd "M-}") #'beads-show-forward-paragraph)
+
     ;; Outline navigation (markdown-mode style)
     (define-key map (kbd "C-c C-n") #'beads-show-outline-next)
     (define-key map (kbd "C-c C-p") #'beads-show-outline-previous)
@@ -639,6 +643,16 @@ Extracts the issue ID from text at point and calls `beads-show'."
           (forward-line 2)
           (recenter-top-bottom 0))
       (message "No previous section"))))
+
+(defun beads-show-forward-paragraph ()
+  "Move forward by one paragraph."
+  (interactive)
+  (forward-paragraph 1))
+
+(defun beads-show-backward-paragraph ()
+  "Move backward by one paragraph."
+  (interactive)
+  (backward-paragraph 1))
 
 (defun beads-show-follow-reference ()
   "Follow bd-N reference at point or on current line."

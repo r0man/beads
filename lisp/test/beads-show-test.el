@@ -1073,6 +1073,47 @@
 
       (kill-buffer))))
 
+;;; Tests for Paragraph Navigation
+
+(ert-deftest beads-show-test-paragraph-navigation-keybindings ()
+  "Test that M-{ and M-} are bound to paragraph navigation."
+  (beads-show-test-with-temp-buffer
+   (should (eq (lookup-key beads-show-mode-map (kbd "M-{"))
+              #'beads-show-backward-paragraph))
+   (should (eq (lookup-key beads-show-mode-map (kbd "M-}"))
+              #'beads-show-forward-paragraph))))
+
+(ert-deftest beads-show-test-forward-paragraph-basic ()
+  "Test moving forward by paragraph."
+  (cl-letf (((symbol-function 'beads--run-command)
+             (beads-show-test--mock-show-command
+              beads-show-test--markdown-rich-issue)))
+    (beads-show "bd-100")
+    (with-current-buffer "*beads-show: bd-100*"
+      (goto-char (point-min))
+      (let ((start-pos (point)))
+        (beads-show-forward-paragraph)
+        (should (> (point) start-pos)))
+      (kill-buffer))))
+
+(ert-deftest beads-show-test-backward-paragraph-basic ()
+  "Test moving backward by paragraph."
+  (cl-letf (((symbol-function 'beads--run-command)
+             (beads-show-test--mock-show-command
+              beads-show-test--markdown-rich-issue)))
+    (beads-show "bd-100")
+    (with-current-buffer "*beads-show: bd-100*"
+      (goto-char (point-max))
+      (let ((start-pos (point)))
+        (beads-show-backward-paragraph)
+        (should (< (point) start-pos)))
+      (kill-buffer))))
+
+(ert-deftest beads-show-test-paragraph-navigation-functions-defined ()
+  "Test that paragraph navigation functions are defined."
+  (should (fboundp 'beads-show-forward-paragraph))
+  (should (fboundp 'beads-show-backward-paragraph)))
+
 ;;; Tests for Field Editing
 
 (ert-deftest beads-show-test-edit-field-keybinding ()
