@@ -145,6 +145,11 @@
     (define-key map (kbd "M-{") #'beads-show-backward-paragraph)
     (define-key map (kbd "M-}") #'beads-show-forward-paragraph)
 
+    ;; Section boundary navigation (markdown-mode style)
+    (define-key map (kbd "C-M-a") #'beads-show-beginning-of-section)
+    (define-key map (kbd "C-M-e") #'beads-show-end-of-section)
+    (define-key map (kbd "C-M-h") #'beads-show-mark-section)
+
     ;; Outline navigation (markdown-mode style)
     (define-key map (kbd "C-c C-n") #'beads-show-outline-next)
     (define-key map (kbd "C-c C-p") #'beads-show-outline-previous)
@@ -653,6 +658,73 @@ Extracts the issue ID from text at point and calls `beads-show'."
   "Move backward by one paragraph."
   (interactive)
   (backward-paragraph 1))
+
+(defun beads-show-beginning-of-section ()
+  "Move to beginning of current section.
+If already at section header, stay there."
+  (interactive)
+  (let ((current-level (beads-show--section-level)))
+    (if current-level
+        ;; Already at a heading, we're at the beginning
+        (beginning-of-line)
+      ;; Not at a heading, find the current section's beginning
+      (let ((start-pos (point))
+            (found nil))
+        (beginning-of-line)
+        (while (and (not found) (not (bobp)))
+          (when (beads-show--section-level)
+            ;; Make sure we're on the heading line, not underline
+            (when (looking-at "^[═─]+$")
+              (forward-line -1))
+            (setq found t))
+          (unless found
+            (forward-line -1)))
+        (if found
+            (beginning-of-line)
+          (goto-char start-pos)
+          (message "No section found"))))))
+
+(defun beads-show-end-of-section ()
+  "Move to end of current section (before next section or EOF)."
+  (interactive)
+  (let ((current-level (beads-show--section-level)))
+    (if current-level
+        ;; At a heading, move past underline if present then find next section
+        (progn
+          (forward-line 1)
+          (when (looking-at "^[═─]+$")
+            (forward-line 1))
+          (let ((target-level current-level)
+                (found-next nil))
+            (while (and (not found-next) (not (eobp)))
+              (let ((level (beads-show--section-level)))
+                (when (and level (<= level target-level)
+                          (not (looking-at "^[═─]+$")))
+                  (setq found-next t)))
+              (unless found-next
+                (forward-line 1)))
+            (when found-next
+              (forward-line -1))
+            (end-of-line)))
+      ;; Not at a heading, move to end of current section
+      (beads-show-beginning-of-section)
+      (beads-show-end-of-section))))
+
+(defun beads-show-mark-section ()
+  "Mark the current section.
+Set mark at beginning of section, move point to end, and activate region."
+  (interactive)
+  (let ((start-pos (point)))
+    ;; Move to beginning of section
+    (beads-show-beginning-of-section)
+    (let ((begin (point)))
+      ;; Set mark at beginning and activate it
+      (push-mark begin t t)
+      ;; Move to end
+      (beads-show-end-of-section)
+      ;; Ensure mark is activated (important for batch mode)
+      (activate-mark)
+      (message "Section marked"))))
 
 (defun beads-show-follow-reference ()
   "Follow bd-N reference at point or on current line."

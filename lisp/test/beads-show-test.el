@@ -1114,6 +1114,91 @@
   (should (fboundp 'beads-show-forward-paragraph))
   (should (fboundp 'beads-show-backward-paragraph)))
 
+;;; Tests for Section Boundary Navigation
+
+(ert-deftest beads-show-test-section-boundary-keybindings ()
+  "Test that C-M-a/e/h are bound to section boundary navigation."
+  (beads-show-test-with-temp-buffer
+   (should (eq (lookup-key beads-show-mode-map (kbd "C-M-a"))
+              #'beads-show-beginning-of-section))
+   (should (eq (lookup-key beads-show-mode-map (kbd "C-M-e"))
+              #'beads-show-end-of-section))
+   (should (eq (lookup-key beads-show-mode-map (kbd "C-M-h"))
+              #'beads-show-mark-section))))
+
+(ert-deftest beads-show-test-beginning-of-section-at-heading ()
+  "Test moving to beginning of section when at heading."
+  (cl-letf (((symbol-function 'beads--run-command)
+             (beads-show-test--mock-show-command
+              beads-show-test--outline-issue)))
+    (beads-show "bd-200")
+    (with-current-buffer "*beads-show: bd-200*"
+      (goto-char (point-min))
+      ;; Find Description heading
+      (when (search-forward "Description" nil t)
+        (beginning-of-line)
+        (let ((start-pos (point)))
+          (beads-show-beginning-of-section)
+          ;; Should stay at same position (already at beginning)
+          (should (= (point) start-pos))))
+      (kill-buffer))))
+
+(ert-deftest beads-show-test-beginning-of-section-in-content ()
+  "Test moving to beginning of section from content."
+  (cl-letf (((symbol-function 'beads--run-command)
+             (beads-show-test--mock-show-command
+              beads-show-test--outline-issue)))
+    (beads-show "bd-200")
+    (with-current-buffer "*beads-show: bd-200*"
+      (goto-char (point-min))
+      ;; Find some content text
+      (when (search-forward "First paragraph" nil t)
+        (beads-show-beginning-of-section)
+        ;; Should have moved to Description section
+        (should (beads-show--section-level)))
+      (kill-buffer))))
+
+(ert-deftest beads-show-test-end-of-section-basic ()
+  "Test moving to end of section."
+  (cl-letf (((symbol-function 'beads--run-command)
+             (beads-show-test--mock-show-command
+              beads-show-test--outline-issue)))
+    (beads-show "bd-200")
+    (with-current-buffer "*beads-show: bd-200*"
+      (goto-char (point-min))
+      ;; Find Description heading
+      (when (search-forward "Description" nil t)
+        (beginning-of-line)
+        (let ((start-pos (point)))
+          (beads-show-end-of-section)
+          ;; Should have moved forward
+          (should (> (point) start-pos))))
+      (kill-buffer))))
+
+(ert-deftest beads-show-test-mark-section-basic ()
+  "Test marking a section."
+  (cl-letf (((symbol-function 'beads--run-command)
+             (beads-show-test--mock-show-command
+              beads-show-test--outline-issue)))
+    (beads-show "bd-200")
+    (with-current-buffer "*beads-show: bd-200*"
+      (goto-char (point-min))
+      ;; Find Description heading
+      (when (search-forward "Description" nil t)
+        (beginning-of-line)
+        (beads-show-mark-section)
+        ;; Mark should be active
+        (should (region-active-p))
+        ;; Region should have some content
+        (should (> (region-end) (region-beginning))))
+      (kill-buffer))))
+
+(ert-deftest beads-show-test-section-boundary-functions-defined ()
+  "Test that section boundary navigation functions are defined."
+  (should (fboundp 'beads-show-beginning-of-section))
+  (should (fboundp 'beads-show-end-of-section))
+  (should (fboundp 'beads-show-mark-section)))
+
 ;;; Tests for Field Editing
 
 (ert-deftest beads-show-test-edit-field-keybinding ()
