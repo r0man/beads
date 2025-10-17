@@ -168,8 +168,13 @@
     (define-key map (kbd "<backtab>") #'beads-show-previous-button)
     (define-key map (kbd "S-TAB") #'beads-show-previous-button)
 
+    ;; Markdown-mode-style aliases for reference navigation
+    (define-key map (kbd "M-n") #'beads-show-next-reference)
+    (define-key map (kbd "M-p") #'beads-show-previous-reference)
+
     ;; Follow reference
     (define-key map (kbd "RET") #'beads-show-follow-reference)
+    (define-key map (kbd "C-c C-o") #'beads-show-follow-reference)  ; markdown-mode alias
     (define-key map (kbd "o") #'beads-show-follow-reference-other-window)
     map)
   "Keymap for `beads-show-mode'.")

@@ -616,6 +616,17 @@
    (should (eq (lookup-key beads-show-mode-map (kbd "RET"))
               #'beads-show-follow-reference))))
 
+(ert-deftest beads-show-test-markdown-mode-aliases ()
+  "Test that markdown-mode-style aliases are set up correctly."
+  (beads-show-test-with-temp-buffer
+   ;; Test reference navigation aliases
+   (should (eq (lookup-key beads-show-mode-map (kbd "M-n"))
+              #'beads-show-next-reference))
+   (should (eq (lookup-key beads-show-mode-map (kbd "M-p"))
+              #'beads-show-previous-reference))
+   (should (eq (lookup-key beads-show-mode-map (kbd "C-c C-o"))
+              #'beads-show-follow-reference))))
+
 (ert-deftest beads-show-test-mode-line-wrapping ()
   "Test that line wrapping is configured based on customization."
   (let ((beads-show-wrap-lines t))
