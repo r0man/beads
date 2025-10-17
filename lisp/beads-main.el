@@ -219,10 +219,10 @@ Returns a propertized string showing project and database info."
           (setq args (append args (list "-s" beads-export--status))))
         ;; Run command
         (apply #'beads--run-command "export" args)
-        (beads-export--reset-state)
         (if beads-export--output
             (message "Exported issues to %s" beads-export--output)
-          (message "Exported issues to stdout")))
+          (message "Exported issues to stdout"))
+        (beads-export--reset-state))
     (error
      (message "Failed to export: %s" (error-message-string err)))))
 
@@ -339,12 +339,12 @@ Returns a propertized string showing project and database info."
           (setq args (append args (list "--strict"))))
         ;; Run command
         (apply #'beads--run-command "import" args)
-        (beads-import--reset-state)
         (beads--invalidate-completion-cache)
         (beads-main--clear-cache)
         (if beads-import--input
             (message "Imported issues from %s" beads-import--input)
-          (message "Imported issues from stdin")))
+          (message "Imported issues from stdin"))
+        (beads-import--reset-state))
     (error
      (message "Failed to import: %s" (error-message-string err)))))
 
