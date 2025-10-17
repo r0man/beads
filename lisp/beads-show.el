@@ -144,6 +144,7 @@
     ;; Paragraph navigation (markdown-mode style)
     (define-key map (kbd "M-{") #'beads-show-backward-paragraph)
     (define-key map (kbd "M-}") #'beads-show-forward-paragraph)
+    (define-key map (kbd "M-h") #'beads-show-mark-paragraph)
 
     ;; Section boundary navigation (markdown-mode style)
     (define-key map (kbd "C-M-a") #'beads-show-beginning-of-section)
@@ -658,6 +659,14 @@ Extracts the issue ID from text at point and calls `beads-show'."
   "Move backward by one paragraph."
   (interactive)
   (backward-paragraph 1))
+
+(defun beads-show-mark-paragraph ()
+  "Mark the current paragraph.
+Set mark at beginning of paragraph, move point to end, and activate region."
+  (interactive)
+  (mark-paragraph)
+  (activate-mark)
+  (message "Paragraph marked"))
 
 (defun beads-show-beginning-of-section ()
   "Move to beginning of current section.

@@ -1112,7 +1112,31 @@
 (ert-deftest beads-show-test-paragraph-navigation-functions-defined ()
   "Test that paragraph navigation functions are defined."
   (should (fboundp 'beads-show-forward-paragraph))
-  (should (fboundp 'beads-show-backward-paragraph)))
+  (should (fboundp 'beads-show-backward-paragraph))
+  (should (fboundp 'beads-show-mark-paragraph)))
+
+(ert-deftest beads-show-test-mark-paragraph-keybinding ()
+  "Test that M-h is bound to beads-show-mark-paragraph."
+  (beads-show-test-with-temp-buffer
+   (should (eq (lookup-key beads-show-mode-map (kbd "M-h"))
+              #'beads-show-mark-paragraph))))
+
+(ert-deftest beads-show-test-mark-paragraph-basic ()
+  "Test marking a paragraph."
+  (cl-letf (((symbol-function 'beads--run-command)
+             (beads-show-test--mock-show-command
+              beads-show-test--markdown-rich-issue)))
+    (beads-show "bd-100")
+    (with-current-buffer "*beads-show: bd-100*"
+      (goto-char (point-min))
+      ;; Find some paragraph text
+      (when (search-forward "bold" nil t)
+        (beads-show-mark-paragraph)
+        ;; Mark should be active
+        (should (region-active-p))
+        ;; Region should have some content
+        (should (> (region-end) (region-beginning))))
+      (kill-buffer))))
 
 ;;; Tests for Section Boundary Navigation
 
